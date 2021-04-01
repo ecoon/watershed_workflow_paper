@@ -1,0 +1,274 @@
+%\documentclass[a4paper,fleqn,longmktitle]{cas-dc}
+\documentclass[a4paper,fleqn]{cas-dc}
+
+%\usepackage[authoryear,longnamesfirst]{natbib}
+%\usepackage[authoryear]{natbib}
+\usepackage[numbers]{natbib}
+
+\newcommand{\avail}[2]{\noindent {\bf#1:}~{#2}\newline}
+
+
+%%%Author definitions
+\def\tsc#1{\csdef{#1}{\textsc{\lowercase{#1}}\xspace}}
+\tsc{WGM}
+\tsc{QE}
+\tsc{EP}
+\tsc{PMS}
+\tsc{BEC}
+\tsc{DE}
+%%%
+
+\begin{document}
+\let\WriteBookmarks\relax
+\def\floatpagepagefraction{1}
+\def\textpagefraction{.001}
+\shorttitle{Watershed Workflow}
+\shortauthors{E.T. Coon}
+
+\title [mode = title]{Watershed Workflow: a workflow for hydrologic model-data integration.}                      
+\tnotemark[1]
+
+\tnotetext[1]{BLAH BLAH BLAH US Government reserves all rights.}
+
+\author[1]{Ethan T. Coon}[type=editor,
+                      auid=000,
+                      orcid=0000-0001-8124-9622]
+\cormark[1]
+\ead{coonet@ornl.gov}
+\credit{Conceptualization, Software, Authorship}
+\address[1]{Climate Change Science Institute \& Environmental Sciences Division, Oak Ridge National Laboratory, 1 Bethel Valley Road, Oak Ridge, TN, 37830, USA}
+\cortext[cor1]{Corresponding author}
+
+\author[2]{Pin Shuai}
+\credit{Software}
+\address[2]{Pacific Northwest National Laboratory}
+
+\begin{abstract}
+Watershed workflow does really cool stuff.
+Watershed workflow does really cool stuff.
+Watershed workflow does really cool stuff.
+Watershed workflow does really cool stuff.
+Watershed workflow does really cool stuff.
+Watershed workflow does really cool stuff.
+\end{abstract}
+
+\begin{graphicalabstract}
+\includegraphics[width=\textwidth]{figs2/watersheds/watershed_workflow.png}
+\end{graphicalabstract}
+
+\begin{highlights}
+\item Research highlights item 1
+\item Research highlights item 2
+\item Research highlights item 3
+\end{highlights}
+
+\begin{keywords}
+integrated hydrologic modeling \sep modeling workflow \sep watershed 
+\end{keywords}
+
+
+\maketitle
+
+\section*{Software availability}
+%
+\avail{Software name}{Watershed Workflow}
+\avail{Developer}{Ethan Coon}
+\avail{Year first official release}{2020}
+\avail{Hardware requirements}{PC}
+\avail{System requirements}{Windows, Linux, Mac}
+\avail{Program language}{Python3}
+\avail{Program size}{2 MB}
+\avail{Availability}{\url{https://github.com/ecoon/watershed-workflow}}
+\avail{License}{BSD 3-clause}
+\avail{Documentation}{User guide, API documentation, and examples hosted at \url{https://ecoon.github.io/watershed-workflow}}
+%
+%
+\section{Introduction}\label{sec:introduction}
+%
+\begin{itemize}
+\item Integrated, distributed hydrology
+\item Hyper-resolution hydro
+\item remote sensing and FAIR data
+\item High performance computing
+\item Models are powerful but require large setup and difficult learning curve
+\item Workflows and software abstractions offer opportunities to provide middleware.
+\item Lit review.
+\item Watershed Workflow is...
+\end{itemize}
+
+\section{Data Sources and Management}
+
+Watershed Workflow's goal of providing a first simulation based on quality, open datasets anywhere in the continental United States is made possible by a large suite of open data sources provided by US and state governmental agencies and served through many assorted web services.
+Unfortunately, there is not a single source or meta data server for all of these, and web services differ across agencies extensively.
+Therefore, a key contribution of this library is the collection and standardization of access to many data streams in a single package.
+
+To accomplish this, Watershed Workflow introduces the concept of a source manager, which, given a hydrologic unit code (HUC) or polygonal shape representing a watershed,
+%
+\begin{itemize}
+\item queries, downloads, or otherwise acquires a dataset or datasets that covers that watershed,
+\item unzips the file if necessary and places the resulting files in a standardized naming convention to allow reuse,  
+\item reads metadata and properties, providing shapes or rasters and metadata, and
+\item does so via a standard API to allow users to swap data sources easily.
+\end{itemize}
+%
+Source managers may use provided REST APIs to discover specific files to download, download files based on HUC or other index, or directly download the data via a get/push request.
+Once files are downloaded, they are stored in a locally hosted data library using unique names specific to the data range; this allows future uses of the same files to not re-download the data.
+
+
+\subsection{Watershed geometry}\label{ssc:acquisition:geom}
+%
+Watershed boundary datasets and hydrography datasets together form the geographic structure of a watershed.
+Watershed boundary datasets are typically delineated through the analysis of elevation datasets, defining a watershed as all parts of the land surface which drain to a common point, typically in the stream network.
+Watersheds are hierarchical, ranging in scale from small primary watersheds which drain into first order streams to full river basins which drain into an ocean.
+In the United States, the United States Geological Survey formally calculates hydrologic units and identifies them using Hydrologic Unit Codes, or HUCs, which respect this hierarchy.
+HUC 2 regions (e.g. the Upper Colorado River or the Tennessee River Basin) are the largest in areal extent, while HUC 12s, or sub-watersheds, are the smallest commonly provided, representing on the order of 100 square kilometers.
+Watershed Workflow uses HUCs as an organizing unit for working with data, primarily because most datasets in the US are organized by the HUC, but also because they form physically useful domains for simulation.
+
+Hydrography datasets provide surveys of river networks, which form the drainage network of watersheds and are where most of the fast-time scale dynamics occur.
+Some hydrologic models (for instance river routing models, dam operations management models, and many flood models) directly use the river network as their simulation domain, while others (for instance the class of integrated, distributed models described here) can use the river network to refine meshes near the rivers and therefore improve resolution where fast dynamics are occuring.
+Watershed boundary and Hydrography datasets are typically available as GIS shapefiles, where each watershed boundary or reach is represented as a shape.
+
+Watershed Workflow leverages the Watershed Boundary Dataset (WBD) and the National Hydrography Dataset (NHD), USGS and EPA datasets available at multiple resolutions to represent United States watersheds, including Alaska.\cite{NHD}
+Also used is the NHD Plus dataset, an augmented dataset built on watershed boundaries and elevation products.
+By default, the 1:100,000 High Resolution datasets are used, but all resolutions are accessible through the source manager.
+Data is discovered through The National Map's REST API, which allows querying for data files organized by HUC and resolution via HTTP POST requests, providing direct-download URLs into cloud services.
+Files are downloaded on first request, unzipped, and stored in the data library for future use.
+Currently, files are indexed by 2-digit (WBD), 4-digit (NHD Plus HR) and 8-digit (NHD) HUCs.
+
+%.. [NHD] https://www.usgs.gov/core-science-systems/ngp/national-hydrography
+%.. [TNM] https://viewer.nationalmap.gov/help/documents/TNMAccessAPIDocumentation/TNMAccessAPIDocumentation.pdf
+
+Once these shapefiles are available on the local machine, they are loaded into a list of polygons or reaches.
+Polygons are loaded into a split-form data structure, where overlapping HUC boundaries are combined into collections of LineStrings.
+This allows the topological and geometric manipulation of these shapes to guarantee consistency of boundaries between HUCs, ensuring that geometric transformations cannot "lose area."  (See Figure \ref{fig:split_hucs}).
+
+Reaches are processed into a list of tree-based data structures, with one for each outlet which terminates on or within the watershed boundary.
+While a tree assumes that rivers only merge as they move downstream, we have found this to be sufficient (despite implications for high resolution data in braided stream networks).
+This merging of line segments to form a tree is done through kd-tree, nearest-neighbor algorithms which allow efficient scaling for all HUC levels.
+Optionally, river networks are pruned if they include too few reaches or do not exit the watershed -- this is possible in the case of man-made irrigation canals and other corner cases.
+From tree network, it is straightforward to accumulate and analyze river network properties from reach properties provided by the dataset, such as accumulated drainage area or other values; these may be used in a workflow.
+
+Finally, digital elevation models or digital terrain models (DEMs or DTMs, hereafter we use DEM to indicate either) are necessary to provided elevation of the ground surface.
+The National Elevation Dataset and ongoing work in the USGS 3D Elevation Program (3DEP) provide rasters which tile the United States in 1-degree tiles.\cite{NED}
+These data products are available at a variety of scales, but nationally at ~30m and ~10m resolutions.
+The location and filename (which differ across the US) are discovered using The National Map's REST API and are downloaded, stitched together if needed, and returned as a single dataset and metadata profile.
+Note that the above NHD, NHD+, and WBD delineations are based on data from the 3DEP program; consistent elevation maps and watershed delineations are crucial to ensure consistent watershed simulations.
+
+\subsection{Land Cover}\label{ssc:acquisition:land_cover}
+%
+Given a watershed, surface properties are typically required to define surficial processes, including runoff through Manning's coefficient or other model parameters, evapotranspiration through leaf area index or other model inputs, and imperviousness surfaces.
+Most distributed hydrologic models link these parameters to a common land cover index.
+The National Land Cover Database (NLCD)\cite{NLCD} provides a map at 30m resolution of land cover across the nation at several different time slices.
+This dataset is based on \emph{\bf{INSERT SENTENCE HERE, WHAT SATALLITE IMAGERY?}}.
+The NLCD raster is a single, ~5GB file download that covers the continental US, and additional rasters for each for Alaska, Puerto Rico, and Hawaii, hosted at static URLs.
+The raster is downloaded, unzipped and stored in the data library on first request.
+
+Watershed Workflow, in addition to standard capabilities required below, provides colormaps and labels for the various NLCD indices, allowing for plotting using standard NLCD colors.
+
+\subsection{Subsurface structure and properties}\label{ssc:acquisition:soil}
+%
+Perhaps the most important parameters required by an integrated hydrologic model are the subsurface structure and properties.
+Soil horizon thicknesses, depth-to-bedrock, and soil and rock properties (e.g. permeability and porosity) control the rate of infiltration, water storage, and other key processes controlling the watershed's water cycle.
+These are also the most difficult properties to attain in standard ways across basins.
+Rarely are they observable through remote sensing, leaving ground-based surveys, direct sampling, and other local measurement approaches to inform model parameters.
+As a result, integrated, distributed hydrologic models have been often limited by the availability of accurate subsurface structure and parameter data.
+
+Fortunately, synthetic, aggregated datasets of soil structure and properties are becoming more common, and, at least for the top few meters of soil, are relatively well constrained.
+Depth-to-bedrock and deeper information is correspondingly harder to find, but global products are available.
+Modelers must choose both what products to build from, and also at what resolution and structural complexity.
+Reasonable modeling studies might choose simple models and few parameters, or complex models with varying horizon thicknesses and properties, as fits the modeling question being asked.
+
+For instance, products intended for Earth System Models such as GLHYMPS provide coarse resolution information of aggregated properties, providing a single porosity and permeability for all soil above the bedrock, while more detailed survey products such as SSURGO provide both formation shape at high resolution and soil properties by horizon, albeit limited to the top two meters.
+Finally, in many watersheds, individual soil pits or boreholes might provide extremely detailed information in exchange for being localized in space.
+
+Here, following with the general concept of Watershed Workflow, we provide default datasets based on SSURGO products, but also provide the ability to use other datasets as chosen by the user.
+In this way, we can ensure that there is a well-posed problem that can be automatically formed everywhere in the continental US, as provided by SSURGO.
+However, this may be either too complex (by introducing too many free parameters for calibration, for instance) or too simple (by not considering important fractured bedrock or other subsurface formations) for a given modeling study.
+Therefore, we emphasize that it is crucial for a given study to choose subsurface structure and properties carefully, and understand the sensitivity of their result to these choices.
+
+By default, Watershed Workflow leverages the US National Resources Conservation Service's web soil survey (SSURGO and STATSGO2) datasets.
+This product identifies a set of formation shapefiles that cover the ground, and allows for multiple ``components'' of the soil in each ``map unit'' and multiple ``horizons'' in each ``component.''
+The soil survey nearly uniformly includes porosity, permeability, bulk density, and sand, silt, and clay compositional percentages.
+While this is not guaranteed, in our experience we have yet to find a map unit in SSURGO that does not include at least one component with each of these properties defined.
+This is crucial, because it seems that a complete dataset covering the continental US is available, and therefore a model can be well-posed anywhere.
+In practice, we frequently average, both vertically across horizons and then horizontally across components, these values to determine a single set of properties for each map unit.
+Note that permeabilities are averaged in log-space.
+Then, Watershed Workflow wraps the Rosetta-3-beta\cite{} model for pedotransfer functions, allowing the calculation of water retention curves in the form of van Genuchten parameters\cite{}.
+This allows a complete description of all needed subsurface hydrologic properties, distributed across the domain and with depth.
+
+The NRCS Web Soil Survey provides several ways to access its data.
+Here we leverage the SQL-based query structure of the Spatial and ?? web tools\cite{}.
+These allow users to post requests based on a bounding box of the area of interest, downloading collections of shapefiles that include map-unit keys.
+These files, along with corresponding SQL queries for soil properties by map-unit key, are saved to disk and potential used to color a raster.
+We note that the (gridded) gSSURGO product is available by state -- this product, while potentially useful to users, is served in a cloud-based service whose software toolkit packages require purchased access.
+While a user may manually click through links to download gSSURGO, it is not possible for an automated workflow to discover the URL, meaning that the REST API is more useful in this application.
+Watershed Workflow does allow the use of gSSURGO files, but the user must download them manually.
+
+\subsection{Meteorological data}\label{ssc:acquisition:met}
+%
+Given surface and subsurface structural data and properties, the crucial remaining model input is meteorological data, typically including precipitation, air temperature, relative humidity, and radiation fluxes.
+These variables are used to drive the transient conditions of a hydrologic model, determining water sources and sinks (e.g. precipitation, evapotranspiration, etc).
+DayMet\cite{} provides daily meteorological data at 1 km resolution across the entirety of North America.
+It curates and synthesizes daily weather stations datasets from the Global Historical Climate Network Daily Database \cite{}, then bias corrects as needed, and spatially and temporally interpolates to create the resulting gridded product.
+
+Given the model domain, Watershed Workflow leverages the DayMet REST API services to download, for each year and variable, a file containing all pixel values in a bounding box covering the model domain.
+The library then merges these into a single file for use by the model code.
+This is typically preferred to interpolating the gridded product directly onto the mesh due to file size concerns.
+A hyperresolution simulation may consist of millions of surface cells; saving a data point for every cell at every day of a given simulation may be prohibitively expensive.
+Instead, it is expected that the interpolation on the mesh can be handled inside of a simulator from the raster.
+
+
+\subsection{User-provided data}\label{ssc:acquisition:user}
+%
+Finally, it is recognized that these data products, while sufficient to generate a first model, may not be the first choice for a given watershed, problem, or resolution.
+In addition to being designed to be extensible (see Section \ref{sec:approach}), generic source managers are provided for using user-provided files, including both shapefile-based products and raster-based products.
+These files can be loaded and curated for use in the workflow using the source-agnostic tools below.
+
+\section{Data Curation}\label{sec:data_curation}
+
+\begin{itemize}
+\item Coordinate transformation
+\item Utilities for integrating data.
+\item Data smoothing and simplification
+\item DEM conditioning
+\end{itemize}
+
+\section{Mesh Generation}\label{sec:meshes}
+
+\section{Software Design}\label{sec:approach}
+%
+\begin{itemize}
+\item Python libraries for code, Jupyter notebooks for orchestration
+\item Installation from Anaconda packages
+\item ReST APIs and open data portals allow automatic dataset discovery.
+\end{itemize}
+
+\section{A worked example: the Coweeta Hydrologic Laboratory}\label{sec:example}
+%
+To motivate each aspect of the workflow, it is useful to consider a worked example throughout the text of this manuscript.
+In the rest of the paper we provide a complete example, demonstrating the datasets and concepts needed to provide a complete simulation.
+The simulation is based on the Coweeta Hydrologic Laboratory, a US National Forest Service station in the US Southeast,\cite{??} and results are shown from the Advanced Terrestrial Simulator\cite{CoonWRR??} (ATS), an integrated, distributed hydrologic model based on unstructured meshes.
+Note that the complete Jupyter notebook used to define this example is provided in supplementary material, and is maintained and updated with new versions in the Watershed Workflow repository and documentation.
+
+As input to the process, a shapefile defining the boundary of the Coweeta domain is assumed provided by the user.
+Note that this could equivalently be a USGS Hydrologic Unit Code (HUC), and the boundary would be downloaded within the workflow.
+
+\section{Conclusions and Future Work}\label{sec:conclusions}
+
+\printcredits
+
+\bibliographystyle{cas-model2-names}
+\bibliography{refs}
+
+
+%\vskip3pt
+
+\bio{figs2/bio/coon.jpg}
+Dr. Ethan Coon is a computational hydrologist in the Climate Change Science Institute at ORNL.
+He has a background in applied and computational mathematics, and has done research in applying computational methods for the Earth, especially land surface and subsurface processes.
+Broadly he is interested in process-based modeling, integrating models with data, and leverage modeling to understand the processes that govern our changing planet.
+\endbio
+
+
+\end{document}
+
