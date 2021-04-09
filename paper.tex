@@ -256,7 +256,7 @@ From the tree network, it is straightforward to accumulate and analyze river net
 Given these data structures, a user may wish to coarsen from the native resolution to a resolution more tractable for simulation.
 As an example, NHDPlus datasets provide watershed boundaries whose shapes consist of points that are often within $10\,m$ of each other.
 Using this shape to generate a mesh would result mesh elements that include edges of that same size; this is typically too small to be computationally feasible for simulation.
-Both watershed boundaries and river networks may be simplified, using \code{shapely}'s standard GIS-based \code{simplify} algorithm, coarsening the typical edge length.
+Both watershed boundaries and river networks may be simplified, using \code{shapely}'s standard GIS-based \code{simplify} algorithm \cite{shapely}, coarsening the typical edge length.
 This is done in a way to ensure that the HUCs still partition the domain, not allowing overlap or disjoint shapes.
 Similarly, river networks are simplified in a way that preserves the topological relationships (intersections) of rivers and HUC boundaries.
 
@@ -267,14 +267,18 @@ Finally, a simple unstructured pit-filling algorithm is provided once a DEM has 
 \subsection{Mesh Generation}
 %
 Given a watershed boundary and a DEM on that boundary, a mesh must be formed to cover that domain for use by distributed hydrologic models.
-As the primary target code considered here is an unstructured code, we leverage the \code{Triangle} library\cite{} to triangulate the map-view surface.
-Triangle forms Delaunay triangulations which are preferred for simulation accuracy, and allow user-provided refinement functions through the \code{meshpy} library which is used to call \code{Triangle} (a C code) from python.
+As the primary target code considered here is an unstructured code, we leverage the \code{Triangle} library\cite{Triangle} to triangulate the map-view surface.
+Triangle forms Delaunay triangulations which are preferred for simulation accuracy, and allow user-provided refinement functions through the \code{meshpy} \cite{meshpy} library which is used to call \code{Triangle} (a C code) from python.
 A variety of standard functions are provided, including options for refining by triangle area, minimum angle, and distance from the river network.
 The river network may be directly included within the mesh, ensuring that the network exists as edges in the mesh, or may be used solely to refine the triangles in the river corridor.
 
 While optimal meshes for simulation are an area of active research\cite{ozgur2020??}, it is common to refine the mesh near the river network.
 This results in higher resolution where faster dynamics are occuring, and decreases the minimum stream width resolved in an integrated simulation.
-An example mesh resulting from this workflow is seen in Section \ref{sec:example}.
+An example surface mesh resulting from this workflow is seen in Section \ref{sec:example}.
+
+Finally, given a user-provided strategy for discretizing soil structure in the vertical, capability is provided to extrude the surface triangles in the vertical, providing triangular prism 3D cells.
+The resulting mesh, which includes the topology and geometry of this 3D mesh, labeled material sets for each soil map unit and bedrock, and labeled face sets for each land cover type, are written to the \code{Exodus II} format \cite{greg}.
+
 
 \subsection{Plotting}
 %
@@ -285,18 +289,35 @@ Defaults and standard styles are used to ensure efficient communication of this 
 
 \section{Software Design}\label{sec:approach}
 %
-\begin{itemize}
-\item Python libraries for code, Jupyter notebooks for orchestration
-\item Installation from Anaconda packages
-\item ReST APIs and open data portals allow automatic dataset discovery.
-\end{itemize}
+Workflow software is notorious for being one-off software with poor documentation and software practices.
+This is changing, as more complex computational workflows are becoming the norm in science fields where much of the work is in data-model integration.
+Jupyter notebooks have revolutionized the field of data-model integration thanks to their reproducibility, integrated Markdown text and code, integrated graphics, and overall ease of use.
+However, they are also potentially fraught with confusing bugs, as they allow for out-of-order execution, unexecuted cells, untested code, and other pitfalls \cite{????}.
+
+Watershed Workflow is designed for use in a two-tiered approach to adhere to best practices of using notebooks.
+All underlying functionality, including all capabilities described above, are implemented in standard python modules.
+This allows testing, which is accomplished through the \code{pytest} \cite{pytest} module, and other advantages of standard python library development.
+Users typically choose to execute the workflow in Jupyter notebooks, and all examples and demo problems are provided in notebooks.
+These notebooks are expected to be executed in-order, from a freshly restarted kernel, and exactly once; while abusing these conventions is common in development, users should take care to ensure these norms are followed with their final product to ensure tracible and reproducible science.
+
+Watershed Workflow builds off a large collection of existing python packages.
+Multiple options are possible for setting up the needed environment, but most typically users install the Anaconda python package manager and use provided environment files which specify exact libraries and versions.
+Additionally a Docker file is provided which builds a complete environment.
+A complete list of third-party packages used is provided in the code's documentation.
+
+Finally, Watershed Workflow is designed, as much as possible, to be extensible.
+Specifically, the package is easily added to for new data sources, and we expect that the list of available sources provided in the distribution will grow over time.
+Additionally, the current workflow is documented and used with a single, unstructured simulator, the Advanced Terrestrial Simulator (Amanzi-ATS)\cite{coon2020coupling,coon2020atsgithub}.
+However, tools are designed to be easily extended to other, similar codes; we welcome collaborations with teams of users and would suport extending the tool for other codes.
+Mesh backends and data structures are designed to be, where possible, agnostic to the final file format, and writers could easily be developed for other mesh formats such as VTK or MOAB.
+Structured backends are also possible.
 
 \section{A worked example: the Coweeta Hydrologic Laboratory}\label{sec:example}
 %
-To motivate each aspect of the workflow, it is useful to consider a worked example throughout the text of this manuscript.
-In the rest of the paper we provide a complete example, demonstrating the datasets and concepts needed to provide a complete simulation.
-The simulation is based on the Coweeta Hydrologic Laboratory, a US National Forest Service station in the US Southeast,\cite{??} and results are shown from the Advanced Terrestrial Simulator\cite{CoonWRR??} (ATS), an integrated, distributed hydrologic model based on unstructured meshes.
-Note that the complete Jupyter notebook used to define this example is provided in supplementary material, and is maintained and updated with new versions in the Watershed Workflow repository and documentation.
+To understand the workflow, it is useful to consider a worked example.
+Here we show a complete example, from watershed to simulation, of an Amanzi-ATS simulation of hydrologic flow and stream discharge.
+The simulation is of the Coweeta Hydrologic Laboratory, a US National Forest Service station in the US Southeast.
+Note that this section is itself a complete Jupyter notebook, and is maintained and updated with the code in the Watershed Workflow repository and documentation.
 
 As input to the process, a shapefile defining the boundary of the Coweeta domain is assumed provided by the user.
 Note that this could equivalently be a USGS Hydrologic Unit Code (HUC), and the boundary would be downloaded within the workflow.
@@ -309,12 +330,13 @@ Note that this could equivalently be a USGS Hydrologic Unit Code (HUC), and the 
 \bibliography{refs}
 
 
+
+
 %\vskip3pt
 
 \bio{figs2/bio/coon.jpg}
 Dr. Ethan Coon is a computational hydrologist in the Climate Change Science Institute at ORNL.
-He has a background in applied and computational mathematics, and has done research in applying computational methods for the Earth, especially land surface and subsurface processes.
-Broadly he is interested in process-based modeling, integrating models with data, and leverage modeling to understand the processes that govern our changing planet.
+His background is in applied and computational mathematics, and his research focuses on high performance computing for hydrologic modeling, process-rich modeling, modeling integrated land surface and subsurface processes, and model-data integration.
 \endbio
 
 
